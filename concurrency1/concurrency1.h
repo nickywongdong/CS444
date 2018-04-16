@@ -1,8 +1,8 @@
 
 
 struct item {
-  int value;
-  int wait;
+  int32_t value;
+  int32_t wait;
 };
 
 # ifndef TYPE

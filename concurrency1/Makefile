@@ -1,5 +1,5 @@
 all:
-	gcc concurrency1.c -lpthread -lrt
+	gcc concurrency1.c -mrdrnd -lpthread
 
 clean:
 	rm -f a.out

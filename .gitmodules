@@ -1,0 +1,3 @@
+[submodule "GroupWork"]
+	path = GroupWork
+	url = git@github.com:nickywongdong/CS444_GROUP20.git
