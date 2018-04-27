@@ -28,6 +28,14 @@ int main(int argc, char *argv[]) {
 	//use mt19937:
 	init_genrand(seed);
 
+	void (*get_forks_functions[5])(int *);
+	void (*put_forks_functions[5])(int *);
+
+	for(i=0; i<5; i++){
+		get_forks_functions[i] = &get_forks;
+		put_forks_functions[i] = &put_forks;
+	}
+
 	//set up fork semaphores and footman:
 	for(i=0; i<5; i++) {
 		sem_init(&forks[i], 0, 1);
@@ -38,8 +46,8 @@ int main(int argc, char *argv[]) {
 	printf("Beginning dining philosophers simulation... \n  --Press Enter to stop\n");
 
 	for(i=0; i<4; i++){
-		pthread_create(&philosopher[i], NULL, (void *) get_forks, (void *) &i);	//grab the fork
-		pthread_create(&philosopher[i], NULL, (void *) put_forks, (void *) &i);	//put fork down
+			pthread_create(&philosopher[i], NULL, (void *) get_forks_functions[i], (void *) &i);	//grab the fork
+			pthread_create(&philosopher[i], NULL, (void *) put_forks_functions[i], (void *) &i);	//put fork down
 	}
 
 	getchar();
@@ -62,17 +70,11 @@ fork [ left ( i )]. wait ()
 */
 void get_forks(int *i) {
 	while(1) {
-		int eat_time;
 	
 		printf("Philosopher %d is getting fork\n", *i);
 		sem_wait(&footman);
 		sem_wait(&forks[right(*i)]);
 		sem_wait(&forks[left(*i)]);
-	
-		//simulate eating:
-		printf("Philosopher %d taking %d seconds to eat\n", *i, eat_time);
-		eat_time = genrand_int32() % (9 + 1 - 2) + 2; //"eating" time from 2 - 9
-		sleep(eat_time);
 	}
 }
 
@@ -85,7 +87,12 @@ footman . signal ()
 
 void put_forks(int *i){
 	while(1) {
-		int think_time;
+		int think_time, eat_time;
+
+		//simulate eating:
+		eat_time = genrand_int32() % (9 + 1 - 2) + 2; //"eating" time from 2 - 9
+		printf("Philosopher %d taking %d seconds to eat\n", *i, eat_time);
+		sleep(eat_time);
 	
 		printf("Philosopher %d is putting fork down\n", *i);
 		sem_post(&forks[right(*i)]);
