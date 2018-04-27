@@ -57,9 +57,9 @@ int main(int argc, char *argv[]) {
 
 	printf("Beginning dining philosophers simulation... \n  --Press Enter to stop\n");
 
-	for(i=0; i<4; i++){
+	for(i=0; i<5; i++){
 		int *index = malloc(sizeof(*index));
-		*index = i;
+		*index = i+1;
 		pthread_create(&philosopher[i], NULL, (void *) get_forks, index);	//grab the fork
 		pthread_create(&philosopher[i], NULL, (void *) put_forks, index);	//put fork down
 	}
@@ -85,13 +85,42 @@ fork [ left ( i )]. wait ()
 void get_forks(void *index) {
 	int i = *((int *) index);
 	while(1) {
+
+		int think_time, eat_time;
+
+		//simulate thinking:
+		think_time = genrand_int32() % (20 + 1 - 1) + 1; //"thinking" time from 1 - 20
+
 		time (&rawtime);
   		timeinfo = localtime (&rawtime);
-  		printf("%s", asctime(timeinfo));
-		printf(ANSI_COLOR_GREEN "Philosopher %d is getting fork\n" ANSI_COLOR_RESET, i);
+		printf("%s -- " ANSI_COLOR_MAGENTA "Philosopher %d will think for %d seconds\n" ANSI_COLOR_RESET, strtok(asctime(timeinfo), "\n"), i, think_time);
+		sleep(think_time);
+
+ 	 	time (&rawtime);
+  		timeinfo = localtime (&rawtime);
+		printf("%s -- " ANSI_COLOR_CYAN "Philosopher %d is done thinking\n" ANSI_COLOR_RESET, strtok(asctime(timeinfo), "\n"), i);
+		
+
 		sem_wait(&footman);
 		sem_wait(&forks[right(i)]);
-		sem_wait(&forks[left(i)]);
+		sem_wait(&forks[left(i)]);	//must have both forks to eat
+
+		time (&rawtime);
+  		timeinfo = localtime (&rawtime);
+		printf("%s -- " ANSI_COLOR_GREEN "Philosopher %d is getting forks\n" ANSI_COLOR_RESET, strtok(asctime(timeinfo), "\n"), i);
+
+		//simulate eating:
+		eat_time = genrand_int32() % (9 + 1 - 2) + 2; //"eating" time from 2 - 9
+
+  		time (&rawtime);
+  		timeinfo = localtime (&rawtime);
+  		printf("%s -- " ANSI_COLOR_YELLOW "Philosopher %d taking %d seconds to eat\n" ANSI_COLOR_RESET, strtok(asctime(timeinfo), "\n"), i, eat_time);
+		sleep(eat_time);
+
+  		time (&rawtime);
+  		timeinfo = localtime (&rawtime);
+		printf("%s -- " ANSI_COLOR_BLUE "Philosopher %d is done eating, putting fork down\n" ANSI_COLOR_RESET , strtok(asctime(timeinfo), "\n"), i);
+	
 	}
 }
 
@@ -105,39 +134,11 @@ footman . signal ()
 void put_forks(void *index){
 	int i = *((int *) index);
 	while(1) {
-		int think_time, eat_time;
 
-		//simulate eating:
-		eat_time = genrand_int32() % (9 + 1 - 2) + 2; //"eating" time from 2 - 9
-
-  	time (&rawtime);
-  	timeinfo = localtime (&rawtime);
-  	printf("%s", asctime(timeinfo));
-  		printf(ANSI_COLOR_YELLOW "Philosopher %d taking %d seconds to eat\n" ANSI_COLOR_RESET, i, eat_time);
-		sleep(eat_time);
-
-
-  	time (&rawtime);
-  	timeinfo = localtime (&rawtime);
-  	printf("%s", asctime(timeinfo));
-		printf(ANSI_COLOR_BLUE "Philosopher %d is done eating, putting fork down\n" ANSI_COLOR_RESET , i);
-	
 		sem_post(&forks[right(i)]);
 		sem_post(&forks[left(i)]);
 		sem_post(&footman);
 	
-		//simulate thinking:
-		think_time = genrand_int32() % (20 + 1 - 1) + 1; //"thinking" time from 1 - 20
-
-		time (&rawtime);
-  		timeinfo = localtime (&rawtime);
-			printf(ANSI_COLOR_MAGENTA "Philosopher %d will think for %d seconds\n" ANSI_COLOR_RESET, i, think_time);
-		sleep(think_time);
-
- 	 	time (&rawtime);
-  		timeinfo = localtime (&rawtime);
-		printf(ANSI_COLOR_CYAN "Philosopher %d is done thinking\n" ANSI_COLOR_RESET, i);
-		//sleep(50000);
 	}
 }
 
@@ -171,9 +172,11 @@ void checkSystem() {
 
 
 int left(int i) {
+	i=i-1;
 	return i;
 }
 
 int right(int i) {
+	i=i-1;
 	return ( i + 1) % 5;
 }
