@@ -21,7 +21,7 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 
-sem_t footman, forks[5], state[5];
+sem_t footman, forks[5];
 time_t rawtime;
 struct tm * timeinfo;
 int philosopher_status[5], forks_status[5], philosopher_sleep_time[5];
@@ -46,7 +46,6 @@ int main(int argc, char *argv[]) {
 
 	//set up fork semaphores and footman:
 	for(i=0; i<4; i++) {
-		sem_init(&state[i], 0, 0);
 		sem_init(&forks[i], 0, 1);
 	}
 	sem_init(&footman, 0, 4);
@@ -96,30 +95,22 @@ void philosopher_thread(void *index) {
 	while(1) {
 		//simulate thinking:
 		think_time = genrand_int32() % (20 + 1 - 1) + 1; //"thinking" time from 1 - 20
+		
+		philosopher_sleep_time[i] = think_time;
+		philosopher_status[i] = 0;
 
-		time (&rawtime);
-  		timeinfo = localtime (&rawtime);
-		//printf("%s -- " ANSI_COLOR_MAGENTA "Philosopher %d will think for %d seconds\n" ANSI_COLOR_RESET, strtok(asctime(timeinfo), "\n"), i, think_time);
 		sleep(think_time);
-
- 	 	time (&rawtime);
-  		timeinfo = localtime (&rawtime);
-		//printf("%s -- " ANSI_COLOR_CYAN "Philosopher %d is done thinking\n" ANSI_COLOR_RESET, strtok(asctime(timeinfo), "\n"), i);
 		
 		get_forks(index);
 
 		//simulate eating:
 		eat_time = genrand_int32() % (9 + 1 - 2) + 2; //"eating" time from 2 - 9
 
-  		time (&rawtime);
-  		timeinfo = localtime (&rawtime);
-  		//printf("%s -- " ANSI_COLOR_YELLOW "Philosopher %d taking %d seconds to eat\n" ANSI_COLOR_RESET, strtok(asctime(timeinfo), "\n"), i, eat_time);
-		sleep(eat_time);
+		philosopher_sleep_time[i] = eat_time;
+		philosopher_status[i] = 1;
 
-  		time (&rawtime);
-  		timeinfo = localtime (&rawtime);
-		//printf("%s -- " ANSI_COLOR_BLUE "Philosopher %d is done eating, putting fork down\n" ANSI_COLOR_RESET , strtok(asctime(timeinfo), "\n"), i);
-		
+
+		sleep(eat_time);
 
 		put_forks(index);
 	}
@@ -137,12 +128,9 @@ void get_forks(void *index) {
 		sem_wait(&forks[right(i)]);
 		sem_wait(&forks[left(i)]);	//must have both forks to eat
 
-		time (&rawtime);
-  		timeinfo = localtime (&rawtime);
-		//printf("%s -- " ANSI_COLOR_GREEN "Philosopher %d is getting forks\n" ANSI_COLOR_RESET, strtok(asctime(timeinfo), "\n"), i);
+		forks_status[right(i)] = 1;
+		forks_status[left(i)] = 1;
 
-
-		//sem_post(&state[i]);	//signal that philosopher has finished eating.
 }
 
 /*
@@ -155,10 +143,12 @@ footman . signal ()
 void put_forks(void *index){
 	int i = *((int *) index);
 
-		//sem_wait(&state[i]);		//only put forks down if this philosopher has finished eating
 		sem_post(&forks[right(i)]);
 		sem_post(&forks[left(i)]);
 		sem_post(&footman);
+
+		forks_status[right(i)] = 0;
+		forks_status[left(i)] = 0;
 	
 }
 
@@ -170,6 +160,7 @@ void print_table() {
 
 	for(i = 0; i < 5; i++) {
 		printf("%-20s|", philosophers[i]);
+
 		if(philosopher_status[i] == 0) {
 			printf("%-10s|", "Thinking");
 		} else {
@@ -182,15 +173,18 @@ void print_table() {
 			printf("%-20s|", "Used");
 		}
 
-		if(forks_status[right(i)]) {
+		if(forks_status[right(i)] == 0) {
 			printf("%-20s|", "Unused");
 		} else {
 			printf("%-20s|", "Used");
-
 		}
 
-		//printf("%-20s|", philosopher_sleep_time[i]);
-		//philosopher_sleep_time[i]-=1;
+		if(philosopher_sleep_time[i] >=0 ) {
+			printf("%-20d|", philosopher_sleep_time[i]);
+		} else {
+			printf("%-20s|", "Waiting on Forks");
+		}
+		philosopher_sleep_time[i] = philosopher_sleep_time[i] - 1;
 
 
 		printf("\n");
