@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 	printf("ESC char received, terminating now...\n");
 	//clean up:
 	sem_destroy(&footman);
-	for(i=0; i<4; i++){
+	for(i=0; i<5; i++){
 		sem_destroy(&forks[i]);
 	}
 
@@ -214,7 +214,7 @@ void print_table() {
 			printf(ANSI_COLOR_MAGENTA "%-10s" ANSI_COLOR_RESET "|", "Used");
 		}
 
-		if(philosopher_sleep_time[i] >=0 ) {
+		if(philosopher_sleep_time[i] >0 ) {
 			printf("%-20d|", philosopher_sleep_time[i]);
 		} else {
 			printf(ANSI_COLOR_RED "%-20s" ANSI_COLOR_RESET "|", "Waiting on Forks");
