@@ -85,6 +85,12 @@ void concurrent_thread(void *index)
 
 	while(1) {
 
+		//check for mutex locking, and only onlock when all three threads using have finished
+		if(active_threads_counter >= 3) {
+			pthread_mutex_lock(&lock);
+		}
+
+
 		sem_wait(&resource_insurance);		//wait for resource to become "available"
 		active_threads_counter++;
 		consume_time = genrand_int32() % (5 + 1 - 1) + 1; //"consume" time from 1 - 5
@@ -94,16 +100,13 @@ void concurrent_thread(void *index)
 		thread_consume_time[i] = consume_time;
 		sleep(consume_time);
 
-		//check for mutex locking, and only onlock when all three threads using have finished
-		if(active_threads_counter >= 3) {
-			pthread_mutex_lock(&lock);
-		}
-		if(active_threads_counter ==0 ) {
+		active_threads_counter--;
+		thread_state[i] = 1;
+
+		if(active_threads_counter == 0 ) {
 			pthread_mutex_unlock(&lock);
 		}
 
-		active_threads_counter--;
-		thread_state[i] = 1;
 		sem_post(&resource_insurance);		//signal thread is done with resource
 
 	}
