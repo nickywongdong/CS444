@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 	}
 
 	//initialize mutex lock
-	pthread_mutex_init(&lock, NULL)
+	pthread_mutex_init(&lock, NULL);
 
 	// initial counter for number of threads using resource:
 	active_threads_counter = 0;
