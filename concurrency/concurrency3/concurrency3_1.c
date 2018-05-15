@@ -26,13 +26,13 @@
 #define SIZE_OF_POOL 15
  
 
-sem_t resource_insurance;
+sem_t resource_insurance, lock;
 int shared_resource[256], thread_state[SIZE_OF_POOL], thread_consume_time[SIZE_OF_POOL];		//shared resource aspect of the assignment
-int active_threads_counter;
-pthread_mutex_t lock;
+int active_threads_counter, init_flag;
 
 void concurrent_thread(void *);
 void print_table();
+void lock_check();
 int getkey();
 
 
@@ -41,23 +41,27 @@ int main(int argc, char *argv[])
 	int i, seed = time(NULL);
 
 	pthread_t threads[SIZE_OF_POOL];
+	pthread_t lock_check_thread;
 	init_genrand(seed);
 
 	//set up semaphore for mutual exclusion
 	sem_init(&resource_insurance, 0, 3);
+
+	//initialize semaphore lock
+	sem_init(&lock, 0, 0);
 
 	//set up thread_state array:
 	for(i=0; i<SIZE_OF_POOL; i++) {
 		thread_state[i] = 0;
 	}
 
-	//initialize mutex lock
-	pthread_mutex_init(&lock, NULL);
 
 	// initial counter for number of threads using resource:
 	active_threads_counter = 0;
 
 	//initialize threads
+	pthread_create(&lock_check_thread, NULL, (void *) lock_check, NULL);
+
 	for(i=0; i<SIZE_OF_POOL; i++) {
 		int *index = malloc(sizeof(*index));
 		*index = i;
@@ -74,39 +78,62 @@ int main(int argc, char *argv[])
 	printf("ESC char received, terminating now...\n");
 	//clean up:
 	sem_destroy(&resource_insurance);
+    sem_destroy(&lock);
 
 	return 0;
 }
 
 
+void lock_check()
+{
+	init_flag = 0;
+	while(1) {
+		if(init_flag != 0) {
+			//allow three threads to access the resource
+			if(active_threads_counter == 0) {
+				sem_post(&lock);
+				sem_post(&lock);
+				sem_post(&lock);
+
+				sleep(1);
+			}
+		}
+	}
+}
+
 void concurrent_thread(void *index) 
 {
-	int consume_time, eat_time, i = *((int *) index);
+	int consume_time, i = *((int *) index);
 
 	while(1) {
 
 		sem_wait(&resource_insurance);		//wait for resource to become "available"
 		active_threads_counter++;
+		init_flag = 1;						//signals that first iteration have ended, can begin lock_check thread
 
-		//check for mutex locking, and only onlock when all three threads using have finished
-		if(active_threads_counter >= 3) {
-			pthread_mutex_lock(&lock);
 
-			if(active_threads_counter == 0 ) {
-				pthread_mutex_unlock(&lock);
-			}
-		}
-
-		consume_time = genrand_int32() % (5 + 1 - 1) + 1; //"consume" time from 1 - 5
+		consume_time = genrand_int32() % (10 + 1 - 1) + 1; //"consume" time from 1 - 10
 
 		// do some stuff to the shared resource:
 		thread_state[i] = 1;
 		thread_consume_time[i] = consume_time;
+
 		sleep(consume_time);
 
 		active_threads_counter--;
-		thread_state[i] = 1;
+		thread_state[i] = 0;
+
+		//wait for other threads to finish
+		sem_wait(&lock);
+
 		sem_post(&resource_insurance);		//signal thread is done with resource
+
+		//cool down for debugging purposes
+		thread_consume_time[i] = 3;
+		thread_state[i] = 2;
+		sleep(3);
+		thread_state[i] = 0;	//go back to waiting for resource
+
 
 	}
 }
@@ -117,15 +144,18 @@ void print_table()
 	printf("Concurrency 3 Resource Lock Simulation - Press " ANSI_COLOR_CYAN "Escape" ANSI_COLOR_RESET " to quit...\n\n");
 	printf("Total Threads Using Resouce: %d\n", active_threads_counter);
 	printf("%-10s|%-20s|%-10s|\n", "Thread", "State", "Consume Time");
-	printf("------------------------------------------------------------------------------------------\n");
+	printf("--------------------------------------------------------\n");
 
 	for(i = 0; i < SIZE_OF_POOL; i++) {
 		printf("%-10d|", i);
 
 		if(thread_state[i] == 0) {
 			printf("%-20s|", "Waiting");
-		} else {
+		} else if (thread_state[i] == 1 ) {
 			printf(ANSI_COLOR_BLUE "%-20s" ANSI_COLOR_RESET "|", "Using Resource");
+		} else if (thread_state[i] == 2 ) {
+			printf(ANSI_COLOR_GREEN "%-20s" ANSI_COLOR_RESET "|", "Cooling Down");
+
 		}
 
 		if(thread_consume_time[i] > 0 ) {
