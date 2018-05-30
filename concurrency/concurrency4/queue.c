@@ -1,3 +1,5 @@
+//source: https://www.geeksforgeeks.org/queue-set-1introduction-and-array-implementation/
+
 // C program for array implementation of queue
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,12 +37,14 @@ int isEmpty(struct Queue* queue)
 // It changes rear and size
 void enqueue(struct Queue* queue, int item)
 {
-    if (isFull(queue))
+    if (isFull(queue)){
+        //printf("queue is full!!!\n");
         return;
+    }
     queue->rear = (queue->rear + 1)%queue->capacity;
     queue->array[queue->rear] = item;
     queue->size = queue->size + 1;
-    printf("%d enqueued to queue\n", item);
+    //printf("%d enqueued to queue\n", item);
 }
  
 // Function to remove an item from queue. 
