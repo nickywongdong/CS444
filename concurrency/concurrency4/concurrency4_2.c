@@ -23,14 +23,6 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 #define ANSI_BOLD_GREEN	   "\x1b[1;32m"
 
-typedef struct 
-{
-    int counter;
-    sem_t mutex;
-
-}Lightswitch;
-
-
 
 void print_table();
 int getkey();
@@ -64,7 +56,7 @@ sem_t tobaccoSem, paperSem, matchSem;
 sem_t tobacco, paper, match, agentSem;
 sem_t mutex;
 int isTobacco, isPaper, isMatch;
-int agent_status[3], resource_wait[3], smoker_status[3], smoker_smoke_time[3], cigarette_craft_time[3];
+int agent_status, resource_wait, smoker_status[3], smoker_smoke_time[3], cigarette_craft_time[3];
 
 int main(int argc, char *argv[]) 
 {
@@ -93,12 +85,13 @@ int main(int argc, char *argv[])
 
 	//variables used for visualization in print_table
 	for(i=0; i<3; i++) {
-		agent_status[i] = 0;
-		resource_wait[i] = 0;
 		smoker_status[i] = 0;
 		smoker_smoke_time[i] = 0;
 		cigarette_craft_time[i] = 0;
 	}
+
+	agent_status = 0;
+	resource_wait = 0;
 
 	pthread_create(&pusher_a_thread, NULL, (void *) pusher_a, NULL);
 	pthread_create(&pusher_b_thread, NULL, (void *) pusher_b, NULL);
@@ -143,10 +136,12 @@ agentSem . wait ()
 void agent_a()
 {
 	while(1) {
-		//printf("int agent a, waiting on agentSem\n");
 		sem_wait(&agentSem);
+		agent_status = 1;
 		sem_post(&tobacco);
 		sem_post(&paper);
+		agent_status = 0;
+		sleep(15);
 	}
 }
 
@@ -158,10 +153,12 @@ agentSem . wait ()
 void agent_b()
 {
 	while(1) {
-		//printf("int agent b, waiting on agentSem\n");
 		sem_wait(&agentSem);
+		agent_status = 2;
 		sem_post(&paper);
 		sem_post(&match);
+		agent_status = 0;
+		sleep(15);
 	}
 }
 
@@ -172,10 +169,12 @@ agentSem . wait ()
 void agent_c()
 {
 	while(1) {
-		//printf("int agent c, waiting on agentSem\n");
 		sem_wait(&agentSem);
+		agent_status = 3;
 		sem_post(&tobacco);
 		sem_post(&match);
+		agent_status = 0;
+		sleep(15);
 	}
 	
 }
@@ -335,11 +334,29 @@ void print_table()
 {
 	int i;
 	printf("Cigarette Smokers Simulation - Press " ANSI_COLOR_CYAN "Escape" ANSI_COLOR_RESET " to quit...\n\n");
-	printf("%-10s|%-20s|%-20s|\n", "Smoker", "Status", "Sleep Time");
+	/*printf("Agent Status: ");
+	
+	if(agent_status == 0) {
+		printf("Waiting\n");
+	} else if (agent_status == 1) {
+		printf("Providing Tobacco & Paper\n");
+	} else if (agent_status == 2) {
+		printf("Providing Paper & Match\n");
+	} else if (agent_status == 3) {
+		printf("Providing Tobacco & Match\n");
+	}*/
+
+	printf("%-20s|%-20s|%-20s|\n", "Smoker", "Status", "Sleep Time");
 	printf("--------------------------------------------------------\n");
 
 	for(i=0; i<3; i++) {
-		printf("%-10d|", i);
+		if(i == 0)
+			printf("%-20s|", "Smoker With Matches");
+		else if (i == 1)
+			printf("%-20s|", "Smoker With Paper");
+		else
+			printf("%-20s|", "Smoker With Tobacco");
+
 
 		if(smoker_status[i] == 0) {
 			printf("%-20s|", "Waiting");
